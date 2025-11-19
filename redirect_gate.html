@@ -16,6 +16,7 @@
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
 
     <div id="content-box" class="bg-white p-8 rounded-xl shadow-2xl text-center max-w-sm w-full">
+        
         <!-- Main Message -->
         <h1 class="text-3xl font-bold text-gray-800 mb-4">Final Step</h1>
         <p class="text-gray-600 mb-6">
@@ -24,22 +25,30 @@
 
         <!-- Dynamic Message Box -->
         <div id="message-box" class="bg-blue-50 p-4 rounded-lg text-sm text-blue-700 mb-6">
-            <!-- Details loaded here -->
             Loading status...
         </div>
 
-        <!-- The Manual Redirect Button (Final Survey Link) -->
+        <!-- The Manual Redirect Button (Primary Attempt) -->
         <a id="survey-link-button" 
            href="#" 
            target="_blank" 
            class="w-full inline-block py-3 px-4 bg-blue-600 text-white font-bold text-lg rounded-xl transition hover:bg-blue-700 shadow-xl active:scale-[0.99] cursor-pointer">
-            <span id="button-text">Proceed to Survey</span>
+            <span id="button-text">1. Proceed to Survey (Recommended)</span>
         </a>
+
+        <!-- Copy Link Button (Fail-safe) -->
+        <button id="copy-link-button"
+                class="w-full mt-3 py-3 px-4 bg-gray-200 text-gray-700 font-bold text-lg rounded-xl transition hover:bg-gray-300 active:scale-[0.99] cursor-pointer">
+            2. Copy Survey Link
+        </button>
         
         <!-- Webview Fallback Message -->
-        <p class="text-xs text-gray-500 mt-4">
-            If the button doesn't open the survey, tap the three dots (<span class="font-bold">...</span>) and choose 'Open in Browser'.
+        <p class="text-xs text-gray-500 mt-4 font-medium">
+            <span class="font-bold text-red-600">IMPORTANT:</span> If the button above doesn't work, press "Copy Survey Link," close this window, and paste the link into Google Chrome or Safari.
         </p>
+        
+        <!-- Hidden input for clipboard functionality -->
+        <input type="text" id="hidden-url-field" style="position: absolute; left: -9999px;">
     </div>
 
     <script>
@@ -52,13 +61,16 @@
 
             // Map the query parameters to your specific Google Form Entry IDs.
             // !!! YOU MUST REPLACE THESE PLACEHOLDER IDs WITH YOUR ACTUAL IDs !!!
-            const ENTRY_ID_CONDITION = "entry.1234567890"; // <-- REPLACE THIS
-            const ENTRY_ID_STATUS = "entry.0987654321";    // <-- REPLACE THIS
+            const ENTRY_ID_CONDITION = "entry.1572471934"; // <-- REPLACE THIS
+            const ENTRY_ID_STATUS = "entry.320235863";    // <-- REPLACE THIS
             // --------------------------------------------------------------------------------
             // --------------------------------------------------------------------------------
 
             const messageBox = document.getElementById('message-box');
             const surveyLinkButton = document.getElementById('survey-link-button');
+            const copyLinkButton = document.getElementById('copy-link-button');
+            const hiddenUrlField = document.getElementById('hidden-url-field');
+            let finalSurveyUrl = ''; // Variable to store the constructed URL
 
             // 1. Get query parameters from the URL
             const urlParams = new URLSearchParams(window.location.search);
@@ -69,15 +81,17 @@
                 // Handle missing parameters
                 messageBox.innerHTML = 'Error: Missing condition (<span class="font-semibold">c</span>) or status (<span class="font-semibold">s</span>) parameters in the URL.';
                 surveyLinkButton.style.display = 'none'; // Hide button on error
+                copyLinkButton.style.display = 'none';
                 console.error("Missing required URL parameters (c or s).");
                 return;
             }
 
             // 2. Construct the final survey URL
-            const finalSurveyUrl = `${BASE_FORM_URL}?${ENTRY_ID_CONDITION}=${condition}&${ENTRY_ID_STATUS}=${status}`;
+            finalSurveyUrl = `${BASE_FORM_URL}?${ENTRY_ID_CONDITION}=${condition}&${ENTRY_ID_STATUS}=${status}`;
 
-            // 3. Update the button's href and display the details
+            // 3. Update the button's href and hidden field
             surveyLinkButton.href = finalSurveyUrl;
+            hiddenUrlField.value = finalSurveyUrl;
             
             messageBox.innerHTML = `
                 Status Logged: <span class="font-semibold">${status}</span><br>
@@ -85,7 +99,32 @@
                 <span class="mt-2 block font-medium">Data successfully logged.</span>
             `;
             
-            // NOTE: The automatic window.location.replace is now removed!
+            // 4. Implement the Copy Link functionality
+            copyLinkButton.addEventListener('click', () => {
+                try {
+                    // Select the text field
+                    hiddenUrlField.select();
+                    hiddenUrlField.setSelectionRange(0, 99999); // For mobile devices
+
+                    // Copy the text inside the text field
+                    document.execCommand('copy');
+
+                    // Provide visual feedback
+                    copyLinkButton.textContent = 'Copied! Tap to paste in your browser.';
+                    copyLinkButton.classList.remove('bg-gray-200', 'text-gray-700');
+                    copyLinkButton.classList.add('bg-green-500', 'text-white');
+                    
+                    setTimeout(() => {
+                        copyLinkButton.textContent = '2. Copy Survey Link';
+                        copyLinkButton.classList.add('bg-gray-200', 'text-gray-700');
+                        copyLinkButton.classList.remove('bg-green-500', 'text-white');
+                    }, 3000);
+
+                } catch (err) {
+                    console.error('Could not copy text: ', err);
+                    copyLinkButton.textContent = 'Copy Failed (Check console)';
+                }
+            });
         });
     </script>
 </body>
