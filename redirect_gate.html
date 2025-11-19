@@ -3,164 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure Data Redirect</title>
+    <title>Proceed to Final Survey</title>
+    <!-- Load Tailwind CSS for easy styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* Custom font */
         body {
             font-family: 'Inter', sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            background-color: #f3f4f6;
         }
     </style>
 </head>
-<body>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
 
-    <div class="p-8 bg-white shadow-xl rounded-xl max-w-sm text-center">
-        <div id="loadingMessage" class="space-y-4">
-            <svg class="w-12 h-12 text-blue-500 mx-auto animate-spin" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="8" stroke-dasharray="80 280" stroke-linecap="round"></circle>
-            </svg>
-            <h1 class="text-xl font-semibold text-gray-800">Transferring Data Securely...</h1>
-            <p class="text-sm text-gray-500">Please wait. Do not close this window.</p>
+    <div id="content-box" class="bg-white p-8 rounded-xl shadow-2xl text-center max-w-sm w-full">
+        <!-- Main Message -->
+        <h1 class="text-3xl font-bold text-gray-800 mb-4">Final Step</h1>
+        <p class="text-gray-600 mb-6">
+            Your transaction log is complete. Please tap the button below to proceed to the final survey.
+        </p>
+
+        <!-- Dynamic Message Box -->
+        <div id="message-box" class="bg-blue-50 p-4 rounded-lg text-sm text-blue-700 mb-6">
+            <!-- Details loaded here -->
+            Loading status...
         </div>
-        
-        <!-- The manual link is now a secondary option -->
-        <a id="manualLink" href="#" target="_blank" class="hidden mt-6 text-sm text-blue-500 hover:text-blue-700 underline">
-            [Click here if the page does not redirect]
-        </a>
 
-        <!-- The new final fail-safe copy button -->
-        <button id="copyButton" class="hidden mt-4 w-full py-3 bg-green-600 text-white font-bold rounded-xl shadow-md transition hover:bg-green-700 active:scale-[0.98]">
-            Copy Survey Link to Clipboard
-        </button>
+        <!-- The Manual Redirect Button (Final Survey Link) -->
+        <a id="survey-link-button" 
+           href="#" 
+           target="_blank" 
+           class="w-full inline-block py-3 px-4 bg-blue-600 text-white font-bold text-lg rounded-xl transition hover:bg-blue-700 shadow-xl active:scale-[0.99] cursor-pointer">
+            <span id="button-text">Proceed to Survey</span>
+        </a>
+        
+        <!-- Webview Fallback Message -->
+        <p class="text-xs text-gray-500 mt-4">
+            If the button doesn't open the survey, tap the three dots (<span class="font-bold">...</span>) and choose 'Open in Browser'.
+        </p>
     </div>
 
     <script>
-        // --- CONFIGURATION ---
-        // 1. Base URL for your Google Form (get the long URL WITHOUT any entry.XXX parameters)
-        const BASE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdL3A6kQ4S72x6wOOM2wkOROjR-IchgBhykB97v2otTTG1EXw/viewform";
+        document.addEventListener('DOMContentLoaded', () => {
+            // --------------------------------------------------------------------------------
+            // 1. Configuration: UPDATE THESE TWO VALUES
+            // --------------------------------------------------------------------------------
+            // Base URL for your Google Form (get the long URL WITHOUT any entry.XXX parameters)
+            const BASE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdL3A6kQ4S72x6wOOM2wkOROjR-IchgBhykB97v2otTTG1EXw/viewform";
 
-        // 2. The entry ID for the Transaction Status (SUCCESS_NO_ERROR or ERROR_DOUBLE_CLICKED)
-        const STATUS_ENTRY_ID = "entry.320235863";
+            // Map the query parameters to your specific Google Form Entry IDs.
+            // !!! YOU MUST REPLACE THESE PLACEHOLDER IDs WITH YOUR ACTUAL IDs !!!
+            const ENTRY_ID_CONDITION = "entry.1234567890"; // <-- REPLACE THIS
+            const ENTRY_ID_STATUS = "entry.0987654321";    // <-- REPLACE THIS
+            // --------------------------------------------------------------------------------
+            // --------------------------------------------------------------------------------
 
-        // 3. The entry ID for the Condition ID (C1, C2, C3) - Since you know the condition, we will use this to confirm the status is correctly logged.
-        const CONDITION_ENTRY_ID = "entry.1572471934";
-        // -------------------------
+            const messageBox = document.getElementById('message-box');
+            const surveyLinkButton = document.getElementById('survey-link-button');
 
-        function getQueryParams() {
-            const params = {};
-            // Get all parameters from the URL
-            window.location.search.substring(1).split("&").forEach(pair => {
-                if (pair) {
-                    const [key, value] = pair.split("=");
-                    params[key] = decodeURIComponent(value || "");
-                }
-            });
-            return params;
-        }
-        
-        // Helper function to copy text to clipboard using execCommand (reliable in iframes/webviews)
-        function copyToClipboard(text, buttonElement) {
-            const originalText = buttonElement.textContent;
-            const originalClasses = buttonElement.className;
-
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            textarea.style.position = 'fixed'; // Prevent scrolling
-            textarea.style.opacity = '0'; // Hide it
-            document.body.appendChild(textarea);
-            textarea.focus();
-            textarea.select();
-            
-            try {
-                document.execCommand('copy');
-                // Success feedback
-                buttonElement.textContent = 'Link Copied! Paste in your browser.';
-                buttonElement.classList.remove('bg-green-600', 'hover:bg-green-700');
-                buttonElement.classList.add('bg-gray-500');
-            } catch (err) {
-                // Failure feedback
-                buttonElement.textContent = 'Copy Failed. Click the link above.';
-                buttonElement.classList.remove('bg-green-600', 'hover:bg-green-700');
-                buttonElement.classList.add('bg-red-500');
-            } finally {
-                document.body.removeChild(textarea);
-                // Revert button text after delay
-                setTimeout(() => {
-                    buttonElement.textContent = originalText;
-                    buttonElement.className = originalClasses;
-                }, 3000);
-            }
-        }
-
-        function initiateRedirect(finalURL) {
-            let openedSuccessfully = false;
-
-            // 1. Attempt using window.open (most straightforward, sometimes blocked)
-            try {
-                const newWindow = window.open(finalURL, '_blank');
-                if (newWindow) {
-                    newWindow.focus();
-                    openedSuccessfully = true;
-                    // Exit the function if successful
-                    return;
-                }
-            } catch (e) {
-                // Continue to next attempt
-            }
-            
-            // 2. Fallback to anchor click trick (if window.open failed or was blocked)
-            if (!openedSuccessfully) {
-                const a = document.createElement('a');
-                a.href = finalURL;
-                a.target = '_blank';
-                setTimeout(() => {
-                    a.click();
-                }, 100); 
-            }
-
-            // 3. Final Fallback to Manual Copy/Click after 3 seconds
-            setTimeout(() => {
-                document.getElementById('loadingMessage').innerHTML = 
-                    '<h1 class="text-xl font-semibold text-blue-600">Survey is Ready!</h1>' +
-                    '<p class="text-sm text-gray-500">If the survey did not open automatically, use the options below to proceed.</p>';
-                
-                // Show both manual options
-                document.getElementById('manualLink').classList.remove('hidden');
-                document.getElementById('copyButton').classList.remove('hidden');
-            }, 3000);
-        }
-
-        window.onload = function() {
-            const params = getQueryParams();
-            const condition = params.c; // e.g., C3
-            const status = params.s;     // e.g., SUCCESS or ERROR
+            // 1. Get query parameters from the URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const condition = urlParams.get('c'); // e.g., C1, C2, C3
+            const status = urlParams.get('s');    // e.g., SUCCESS, ERROR
 
             if (!condition || !status) {
-                document.getElementById('loadingMessage').innerHTML = '<h1 class="text-xl font-semibold text-red-600">ERROR: Missing Data Parameters.</h1>';
+                // Handle missing parameters
+                messageBox.innerHTML = 'Error: Missing condition (<span class="font-semibold">c</span>) or status (<span class="font-semibold">s</span>) parameters in the URL.';
+                surveyLinkButton.style.display = 'none'; // Hide button on error
+                console.error("Missing required URL parameters (c or s).");
                 return;
             }
 
-            // Map simple status to full Google Form value
-            const statusValue = status === 'SUCCESS' ? 'SUCCESS_NO_ERROR' : 'ERROR_DOUBLE_CLICKED';
+            // 2. Construct the final survey URL
+            const finalSurveyUrl = `${BASE_FORM_URL}?${ENTRY_ID_CONDITION}=${condition}&${ENTRY_ID_STATUS}=${status}`;
 
-            // Construct the final pre-filled URL
-            const finalURL = `${BASE_FORM_URL}?usp=pp_url&${STATUS_ENTRY_ID}=${statusValue}&${CONDITION_ENTRY_ID}=${condition}`;
+            // 3. Update the button's href and display the details
+            surveyLinkButton.href = finalSurveyUrl;
             
-            // Set the href for the manual link
-            document.getElementById('manualLink').href = finalURL;
+            messageBox.innerHTML = `
+                Status Logged: <span class="font-semibold">${status}</span><br>
+                Condition: <span class="font-semibold">${condition}</span><br>
+                <span class="mt-2 block font-medium">Data successfully logged.</span>
+            `;
             
-            // Attach listener to the copy button
-            const copyButton = document.getElementById('copyButton');
-            copyButton.addEventListener('click', function() {
-                copyToClipboard(finalURL, copyButton);
-            });
-
-            initiateRedirect(finalURL);
-        };
+            // NOTE: The automatic window.location.replace is now removed!
+        });
     </script>
 </body>
 </html>
